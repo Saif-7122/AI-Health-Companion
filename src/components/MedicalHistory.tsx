@@ -1,0 +1,177 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { History, Clock, MessageCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface MedicalRecord {
+  id: string;
+  date: Date;
+  type: 'consultation' | 'prescription' | 'symptom';
+  title: string;
+  description: string;
+  status: 'resolved' | 'ongoing' | 'follow-up';
+}
+
+interface MedicalHistoryProps {
+  user: any;
+}
+
+const MedicalHistory: React.FC<MedicalHistoryProps> = ({ user }) => {
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
+
+  // Mock medical history data
+  const medicalRecords: MedicalRecord[] = [
+    {
+      id: '1',
+      date: new Date('2024-01-15'),
+      type: 'consultation',
+      title: 'AI Consultation - Headache Treatment',
+      description: 'Discussed recurring headaches. AI recommended hydration, rest, and suggested monitoring patterns. Provided information about when to seek medical attention.',
+      status: 'resolved'
+    },
+    {
+      id: '2',
+      date: new Date('2024-01-10'),
+      type: 'prescription',
+      title: 'Medicine Recommendation - Cold Symptoms',
+      description: 'AI provided over-the-counter medication suggestions for cold symptoms including acetaminophen for fever and throat lozenges.',
+      status: 'resolved'
+    },
+    {
+      id: '3',
+      date: new Date('2024-01-05'),
+      type: 'symptom',
+      title: 'Symptom Tracking - Sleep Issues',
+      description: 'Reported difficulty sleeping. AI provided sleep hygiene recommendations and stress management techniques.',
+      status: 'ongoing'
+    },
+    {
+      id: '4',
+      date: new Date('2024-01-01'),
+      type: 'consultation',
+      title: 'Health Check Discussion',
+      description: 'General health discussion with AI. Reviewed lifestyle factors and preventive care recommendations.',
+      status: 'follow-up'
+    }
+  ];
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'consultation':
+        return <MessageCircle className="h-4 w-4" />;
+      case 'prescription':
+        return <FileText className="h-4 w-4" />;
+      case 'symptom':
+        return <Clock className="h-4 w-4" />;
+      default:
+        return <History className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'resolved':
+        return 'bg-medical-green text-white';
+      case 'ongoing':
+        return 'bg-medical-warning text-black';
+      case 'follow-up':
+        return 'bg-medical-blue text-white';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const toggleExpanded = (recordId: string) => {
+    setExpandedRecord(expandedRecord === recordId ? null : recordId);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-card-custom">
+        <CardHeader className="bg-primary-light">
+          <CardTitle className="flex items-center gap-3">
+            <History className="h-6 w-6 text-primary" />
+            Medical History
+          </CardTitle>
+          <CardDescription>
+            Your AI consultation history and health tracking records
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="space-y-4">
+        {medicalRecords.map((record) => (
+          <Card key={record.id} className="shadow-card-custom hover:shadow-medical transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-primary-light text-primary">
+                    {getTypeIcon(record.type)}
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{record.title}</CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                      <Clock className="h-3 w-3" />
+                      {record.date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(record.status)}>
+                    {record.status}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleExpanded(record.id)}
+                  >
+                    {expandedRecord === record.id ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            
+            {expandedRecord === record.id && (
+              <CardContent className="pt-0">
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="text-sm leading-relaxed">{record.description}</p>
+                  <div className="mt-4 flex gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {record.type}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      AI Generated
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      {medicalRecords.length === 0 && (
+        <Card className="shadow-card-custom">
+          <CardContent className="text-center py-12">
+            <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-medium mb-2">No Medical History Yet</h3>
+            <p className="text-muted-foreground">
+              Start chatting with your AI health companion to build your medical history.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default MedicalHistory;
