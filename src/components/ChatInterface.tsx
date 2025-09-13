@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Send, User, Stethoscope } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 import aiChatIcon from '../assets/ai-chat-icon.jpg';
 
 interface Message {
@@ -23,13 +25,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user }) => {
     {
       id: '1',
       type: 'ai',
-      content: `Hello ${user.name}! I'm your AI Health Companion. I can help you with medicine recommendations, answer health questions, and provide general medical guidance. How can I assist you today?`,
+      content: `Hello ${user.full_name || user.name}! I'm your AI Health Companion. I can help you with medicine recommendations, answer health questions, and provide general medical guidance. How can I assist you today?`,
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,8 +43,68 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user }) => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    loadChatHistory();
+  }, [user]);
+
+  const loadChatHistory = async () => {
+    if (!user?.id) return;
+
+    try {
+      // Get the most recent chat session
+      const { data: sessions, error: sessionError } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .eq('patient_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (sessionError) {
+        console.error('Error loading sessions:', sessionError);
+        return;
+      }
+
+      if (sessions && sessions.length > 0) {
+        const session = sessions[0];
+        setCurrentSessionId(session.id);
+
+        // Load messages from this session
+        const { data: chatMessages, error: messagesError } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('session_id', session.id)
+          .order('created_at', { ascending: true });
+
+        if (messagesError) {
+          console.error('Error loading messages:', messagesError);
+          return;
+        }
+
+        if (chatMessages && chatMessages.length > 0) {
+          const formattedMessages: Message[] = [
+            {
+              id: '1',
+              type: 'ai',
+              content: `Hello ${user.full_name || user.name}! I'm your AI Health Companion. How can I help you today?`,
+              timestamp: new Date(),
+            },
+            ...chatMessages.map(msg => ({
+              id: msg.id,
+              type: msg.role === 'user' ? 'user' : 'ai' as 'user' | 'ai',
+              content: msg.content,
+              timestamp: new Date(msg.created_at),
+            }))
+          ];
+          setMessages(formattedMessages);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || !user?.id) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -53,25 +117,48 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user }) => {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response (in real app, this would call Gemini/DeepSeek API)
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          message: inputMessage,
+          sessionId: currentSessionId,
+          userId: user.id
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: `Thank you for your question about "${inputMessage}". As an AI health companion, I can provide general guidance, but please remember that this is not a substitute for professional medical advice. For specific medical concerns, please consult with a healthcare professional. 
-
-Here's some general information that might help:
-- Always follow prescribed medication dosages
-- Monitor for any side effects
-- Maintain a healthy lifestyle
-- Schedule regular check-ups
-
-Would you like me to help you with anything specific about your health or medications?`,
+        content: data.response,
         timestamp: new Date()
       };
+
       setMessages(prev => [...prev, aiResponse]);
+      setCurrentSessionId(data.sessionId);
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Add fallback response
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: 'I apologize, but I\'m having trouble responding right now. Please try again or consult with a healthcare professional for immediate medical concerns.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorResponse]);
+    } finally {
       setIsTyping(false);
-    }, 2000);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

@@ -14,7 +14,346 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          appointment_date: string
+          appointment_time: string
+          created_at: string | null
+          doctor_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          status: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          appointment_date: string
+          appointment_time: string
+          created_at?: string | null
+          doctor_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          appointment_date?: string
+          appointment_time?: string
+          created_at?: string | null
+          doctor_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          status?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          patient_id: string
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          patient_id: string
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          patient_id?: string
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      doctor_details: {
+        Row: {
+          available_days: string[] | null
+          available_slots: string[] | null
+          bio: string | null
+          consultation_fee: number | null
+          created_at: string | null
+          hospital_affiliation: string | null
+          id: string
+          is_available: boolean | null
+          license_number: string
+          qualification: string | null
+          specialization: string
+          updated_at: string | null
+          user_id: string
+          years_experience: number | null
+        }
+        Insert: {
+          available_days?: string[] | null
+          available_slots?: string[] | null
+          bio?: string | null
+          consultation_fee?: number | null
+          created_at?: string | null
+          hospital_affiliation?: string | null
+          id?: string
+          is_available?: boolean | null
+          license_number: string
+          qualification?: string | null
+          specialization: string
+          updated_at?: string | null
+          user_id: string
+          years_experience?: number | null
+        }
+        Update: {
+          available_days?: string[] | null
+          available_slots?: string[] | null
+          bio?: string | null
+          consultation_fee?: number | null
+          created_at?: string | null
+          hospital_affiliation?: string | null
+          id?: string
+          is_available?: boolean | null
+          license_number?: string
+          qualification?: string | null
+          specialization?: string
+          updated_at?: string | null
+          user_id?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      medical_records: {
+        Row: {
+          appointment_id: string | null
+          chat_session_id: string | null
+          created_at: string | null
+          date: string | null
+          description: string | null
+          diagnosis: string | null
+          doctor_id: string | null
+          id: string
+          patient_id: string
+          prescription: string | null
+          record_type: string | null
+          title: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          chat_session_id?: string | null
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          diagnosis?: string | null
+          doctor_id?: string | null
+          id?: string
+          patient_id: string
+          prescription?: string | null
+          record_type?: string | null
+          title: string
+        }
+        Update: {
+          appointment_id?: string | null
+          chat_session_id?: string | null
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          diagnosis?: string | null
+          doctor_id?: string | null
+          id?: string
+          patient_id?: string
+          prescription?: string | null
+          record_type?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_records_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_records_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_records_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "medical_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      patient_details: {
+        Row: {
+          address: string | null
+          allergies: string[] | null
+          blood_group: string | null
+          created_at: string | null
+          current_medications: string[] | null
+          date_of_birth: string | null
+          emergency_contact: string | null
+          gender: string | null
+          id: string
+          medical_conditions: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          allergies?: string[] | null
+          blood_group?: string | null
+          created_at?: string | null
+          current_medications?: string[] | null
+          date_of_birth?: string | null
+          emergency_contact?: string | null
+          gender?: string | null
+          id?: string
+          medical_conditions?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          allergies?: string[] | null
+          blood_group?: string | null
+          created_at?: string | null
+          current_medications?: string[] | null
+          date_of_birth?: string | null
+          emergency_contact?: string | null
+          gender?: string | null
+          id?: string
+          medical_conditions?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string | null
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

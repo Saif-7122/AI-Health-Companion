@@ -157,9 +157,8 @@ const MedicalHistory: React.FC<MedicalHistoryProps> = ({ user }) => {
             )}
           </Card>
         ))}
-      </div>
-
-      {medicalRecords.length === 0 && (
+        
+        {medicalRecords.length === 0 && (
         <Card className="shadow-card-custom">
           <CardContent className="text-center py-12">
             <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -169,7 +168,8 @@ const MedicalHistory: React.FC<MedicalHistoryProps> = ({ user }) => {
             </p>
           </CardContent>
         </Card>
-      )}
+        )}
+      </div>
     </div>
   );
 };

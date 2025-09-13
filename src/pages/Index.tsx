@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,28 +6,96 @@ import { Stethoscope, Users, Bot, ArrowRight, Heart, Shield, Clock } from 'lucid
 import AuthForm from '@/components/AuthForm';
 import PatientDashboard from '@/components/PatientDashboard';
 import DoctorDashboard from '@/components/DoctorDashboard';
+import { supabase } from '@/integrations/supabase/client';
 import heroMedical from '../assets/hero-medical.jpg';
 import consultationImage from '../assets/consultation.jpg';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<'landing' | 'auth' | 'patient-dashboard' | 'doctor-dashboard'>('landing');
   const [selectedUserType, setSelectedUserType] = useState<'patient' | 'doctor'>('patient');
-  const [user, setUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for existing session
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await loadUserProfile(session.user.id);
+        } else {
+          setCurrentUser(null);
+          setCurrentView('landing');
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadUserProfile(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error checking auth:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error loading profile:', error);
+        return;
+      }
+
+      setCurrentUser({ ...profile, id: userId });
+      setCurrentView(profile.user_type === 'doctor' ? 'doctor-dashboard' : 'patient-dashboard');
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const handleRoleSelection = (userType: 'patient' | 'doctor') => {
     setSelectedUserType(userType);
     setCurrentView('auth');
   };
 
-  const handleLogin = (userData: any) => {
-    setUser(userData);
-    setCurrentView(userData.userType === 'patient' ? 'patient-dashboard' : 'doctor-dashboard');
+  const handleLogin = async (userData: any) => {
+    // The auth state change will handle the redirect automatically
+    console.log('Login successful for:', userData.email);
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setCurrentView('landing');
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setCurrentView('landing');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
 
   if (currentView === 'auth') {
     return (
@@ -39,12 +107,12 @@ const Index = () => {
     );
   }
 
-  if (currentView === 'patient-dashboard' && user) {
-    return <PatientDashboard user={user} onLogout={handleLogout} />;
+  if (currentView === 'patient-dashboard' && currentUser) {
+    return <PatientDashboard user={currentUser} onLogout={handleLogout} />;
   }
 
-  if (currentView === 'doctor-dashboard' && user) {
-    return <DoctorDashboard user={user} onLogout={handleLogout} />;
+  if (currentView === 'doctor-dashboard' && currentUser) {
+    return <DoctorDashboard user={currentUser} onLogout={handleLogout} />;
   }
 
   return (
@@ -213,7 +281,7 @@ const Index = () => {
                     <h3 className="text-xl font-semibold">AI-Powered Recommendations</h3>
                   </div>
                   <p className="text-muted-foreground">
-                    Get intelligent medicine recommendations powered by Gemini and DeepSeek AI, 
+                    Get intelligent medicine recommendations powered by Gemini AI, 
                     providing accurate guidance for your health concerns.
                   </p>
                 </CardContent>

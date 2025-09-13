@@ -22,6 +22,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ onBack, userType, onLogin }) => {
     specialization: '',
     licenseNumber: ''
   });
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
