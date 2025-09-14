@@ -43,6 +43,13 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ user, onLogout }) =
           </div>
           
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={onLogout}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              Logout
+            </Button>
             <div className="text-right">
               <p className="font-medium">{user.full_name || user.name || 'User'}</p>
               <Badge variant="secondary" className="bg-white/20 text-white">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar as CalendarIcon, Clock, Stethoscope, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 interface Doctor {
   id: string;
@@ -26,48 +28,92 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedSlot, setSelectedSlot] = useState<string>('');
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Mock doctors data
-  const doctors: Doctor[] = [
-    {
-      id: '1',
-      name: 'Dr. Sarah Johnson',
-      specialization: 'General Medicine',
-      availableSlots: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM']
-    },
-    {
-      id: '2',
-      name: 'Dr. Michael Chen',
-      specialization: 'Cardiology',
-      availableSlots: ['10:00 AM', '01:00 PM', '03:00 PM', '05:00 PM']
-    },
-    {
-      id: '3',
-      name: 'Dr. Emily Rodriguez',
-      specialization: 'Dermatology',
-      availableSlots: ['09:30 AM', '11:30 AM', '02:30 PM', '04:30 PM']
-    },
-    {
-      id: '4',
-      name: 'Dr. James Wilson',
-      specialization: 'Orthopedics',
-      availableSlots: ['08:00 AM', '12:00 PM', '03:30 PM', '05:30 PM']
+  useEffect(() => {
+    loadDoctors();
+    if (user?.id) {
+      loadAppointments();
     }
-  ];
+  }, [user?.id]);
 
-  const [appointments, setAppointments] = useState([
-    {
-      id: '1',
-      doctorName: 'Dr. Sarah Johnson',
-      date: '2024-01-20',
-      time: '10:00 AM',
-      status: 'confirmed',
-      specialization: 'General Medicine'
+  const loadDoctors = async () => {
+    try {
+      const { data: doctorDetails, error } = await supabase
+        .from('doctor_details')
+        .select(`
+          *,
+          profiles:user_id (full_name, avatar_url)
+        `)
+        .eq('is_available', true);
+
+      if (error) throw error;
+
+      const formattedDoctors = doctorDetails?.map(doctor => ({
+        id: doctor.user_id,
+        name: doctor.profiles?.full_name || 'Dr. Unknown',
+        specialization: doctor.specialization,
+        image: doctor.profiles?.avatar_url || '',
+        availableSlots: doctor.available_slots || ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM']
+      })) || [];
+
+      setDoctors(formattedDoctors);
+    } catch (error) {
+      console.error('Error loading doctors:', error);
+      // Fallback to mock data if no doctors in database
+      setDoctors([
+        {
+          id: 'mock-1',
+          name: 'Dr. Sarah Johnson',
+          specialization: 'General Medicine',
+          availableSlots: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM']
+        },
+        {
+          id: 'mock-2',
+          name: 'Dr. Michael Chen',
+          specialization: 'Cardiology',
+          availableSlots: ['10:00 AM', '01:00 PM', '03:00 PM', '05:00 PM']
+        }
+      ]);
     }
-  ]);
+  };
 
-  const handleBookAppointment = () => {
+  const loadAppointments = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data: appointmentsData, error } = await supabase
+        .from('appointments')
+        .select(`
+          *
+        `)
+        .eq('patient_id', user.id)
+        .order('appointment_date', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedAppointments = appointmentsData?.map(apt => {
+        const doctor = doctors.find(d => d.id === apt.doctor_id);
+        return {
+          id: apt.id,
+          doctorName: doctor?.name || 'Dr. Unknown',
+          specialization: doctor?.specialization || 'General Medicine',
+          date: apt.appointment_date,
+          time: apt.appointment_time,
+          status: apt.status
+        };
+      }) || [];
+
+      setAppointments(formattedAppointments);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+    }
+  };
+
+  const handleBookAppointment = async () => {
     if (!selectedDate || !selectedDoctor || !selectedSlot) {
       toast({
         title: "Missing Information",
@@ -77,28 +123,44 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
       return;
     }
 
-    const doctor = doctors.find(d => d.id === selectedDoctor);
-    if (!doctor) return;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .insert({
+          patient_id: user.id,
+          doctor_id: selectedDoctor,
+          appointment_date: format(selectedDate, 'yyyy-MM-dd'),
+          appointment_time: selectedSlot,
+          status: 'scheduled',
+          type: 'consultation'
+        });
 
-    const newAppointment = {
-      id: Date.now().toString(),
-      doctorName: doctor.name,
-      date: selectedDate.toISOString().split('T')[0],
-      time: selectedSlot,
-      status: 'confirmed',
-      specialization: doctor.specialization
-    };
+      if (error) throw error;
 
-    setAppointments(prev => [...prev, newAppointment]);
-    
-    toast({
-      title: "Appointment Booked!",
-      description: `Your appointment with ${doctor.name} on ${selectedDate.toLocaleDateString()} at ${selectedSlot} has been confirmed.`,
-    });
+      // Reset form
+      setSelectedDoctor('');
+      setSelectedSlot('');
 
-    // Reset form
-    setSelectedDoctor('');
-    setSelectedSlot('');
+      // Reload appointments
+      await loadAppointments();
+      
+      const doctor = doctors.find(d => d.id === selectedDoctor);
+      toast({
+        title: "Appointment Booked!",
+        description: `Your appointment with ${doctor?.name} on ${selectedDate.toLocaleDateString()} at ${selectedSlot} has been confirmed.`,
+      });
+
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      toast({
+        title: "Booking Failed",
+        description: "Failed to book appointment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getSelectedDoctor = () => {
@@ -197,11 +259,11 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
 
                 <Button 
                   onClick={handleBookAppointment}
-                  disabled={!selectedSlot}
+                  disabled={!selectedSlot || isLoading}
                   className="w-full mt-4"
                   variant="medical"
                 >
-                  Book Appointment
+                  {isLoading ? 'Booking...' : 'Book Appointment'}
                 </Button>
               </CardContent>
             </Card>

@@ -39,6 +39,13 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ user, onLogout }) => 
           </div>
           
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={onLogout}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              Logout
+            </Button>
             <div className="text-right">
               <p className="font-medium">Dr. {user.full_name || user.name || 'Doctor'}</p>
               <p className="text-sm opacity-90">{user.specialization || 'General Medicine'}</p>
