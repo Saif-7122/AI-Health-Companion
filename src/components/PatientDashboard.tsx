@@ -44,15 +44,15 @@ const PatientDashboard: React.FC<PatientDashboardProps> = ({ user, onLogout }) =
           
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="font-medium">{user.name}</p>
+              <p className="font-medium">{user.full_name || user.name || 'User'}</p>
               <Badge variant="secondary" className="bg-white/20 text-white">
                 Patient
               </Badge>
             </div>
             <Avatar>
-              <AvatarImage src="" />
+              <AvatarImage src={user.avatar_url || ""} />
               <AvatarFallback className="bg-white/20 text-white">
-                {user.name.charAt(0)}
+                {(user.full_name || user.name || 'U').charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>

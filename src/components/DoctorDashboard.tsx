@@ -40,16 +40,16 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ user, onLogout }) => 
           
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="font-medium">Dr. {user.name}</p>
+              <p className="font-medium">Dr. {user.full_name || user.name || 'Doctor'}</p>
               <p className="text-sm opacity-90">{user.specialization || 'General Medicine'}</p>
               <Badge variant="secondary" className="bg-white/20 text-white">
                 Doctor
               </Badge>
             </div>
             <Avatar>
-              <AvatarImage src="" />
+              <AvatarImage src={user.avatar_url || ""} />
               <AvatarFallback className="bg-white/20 text-white">
-                {user.name.charAt(0)}
+                {(user.full_name || user.name || 'D').charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
