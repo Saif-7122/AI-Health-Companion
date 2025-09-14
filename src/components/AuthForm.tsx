@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Stethoscope, Users } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthFormProps {
   onBack: () => void;
