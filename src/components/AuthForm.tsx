@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Stethoscope, Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthFormProps {
   onBack: () => void;
@@ -23,24 +25,139 @@ const AuthForm: React.FC<AuthFormProps> = ({ onBack, userType, onLogin }) => {
     licenseNumber: ''
   });
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (isLogin: boolean) => {
-    // Mock login/signup - in real app, this would connect to Supabase
-    const userData = {
-      id: Date.now().toString(),
-      name: formData.name || 'User',
-      email: formData.email,
-      userType,
-      ...(userType === 'doctor' && {
-        specialization: formData.specialization,
-        licenseNumber: formData.licenseNumber
-      })
-    };
-    onLogin(userData);
+  const handleSubmit = async (isLogin: boolean) => {
+    if (!formData.email || !formData.password) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      if (isLogin) {
+        // Login
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) {
+          toast({
+            title: "Login Failed",
+            description: error.message,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (data.user) {
+          // Fetch user profile to determine user type and other details
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .single();
+
+          toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+          });
+
+          onLogin({
+            id: data.user.id,
+            email: data.user.email,
+            name: profile?.full_name || 'User',
+            userType: profile?.user_type || userType,
+          });
+        }
+      } else {
+        // Sign up
+        if (!formData.name) {
+          toast({
+            title: "Error",
+            description: "Please enter your full name",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: formData.name,
+              user_type: userType,
+              phone: formData.phone,
+              ...(userType === 'doctor' && {
+                specialization: formData.specialization,
+                license_number: formData.licenseNumber
+              })
+            }
+          }
+        });
+
+        if (error) {
+          toast({
+            title: "Sign Up Failed",
+            description: error.message,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (data.user) {
+          // Create additional details based on user type
+          if (userType === 'doctor' && formData.specialization && formData.licenseNumber) {
+            await supabase.from('doctor_details').insert({
+              user_id: data.user.id,
+              specialization: formData.specialization,
+              license_number: formData.licenseNumber,
+            });
+          }
+
+          if (userType === 'patient') {
+            await supabase.from('patient_details').insert({
+              user_id: data.user.id,
+            });
+          }
+
+          toast({
+            title: "Account Created",
+            description: "Please check your email to verify your account.",
+          });
+
+          // If user is already confirmed (in development), log them in
+          if (data.session) {
+            onLogin({
+              id: data.user.id,
+              email: data.user.email,
+              name: formData.name,
+              userType: userType,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -109,8 +226,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onBack, userType, onLogin }) => {
                 onClick={() => handleSubmit(true)} 
                 className="w-full" 
                 variant={userType === 'patient' ? 'default' : 'secondary'}
+                disabled={loading}
               >
-                Login
+                {loading ? 'Signing in...' : 'Login'}
               </Button>
             </TabsContent>
             
@@ -187,8 +305,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onBack, userType, onLogin }) => {
                 onClick={() => handleSubmit(false)} 
                 className="w-full"
                 variant={userType === 'patient' ? 'default' : 'secondary'}
+                disabled={loading}
               >
-                Sign Up
+                {loading ? 'Creating account...' : 'Sign Up'}
               </Button>
             </TabsContent>
           </Tabs>
