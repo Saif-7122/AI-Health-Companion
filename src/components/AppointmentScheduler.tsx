@@ -35,10 +35,13 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
 
   useEffect(() => {
     loadDoctors();
-    if (user?.id) {
+  }, []);
+
+  useEffect(() => {
+    if (user?.id && doctors.length > 0) {
       loadAppointments();
     }
-  }, [user?.id]);
+  }, [user?.id, doctors]);
 
   const loadDoctors = async () => {
     try {
@@ -57,7 +60,7 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
         name: doctor.profiles?.full_name || 'Dr. Unknown',
         specialization: doctor.specialization,
         image: doctor.profiles?.avatar_url || '',
-        availableSlots: doctor.available_slots || ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM']
+        availableSlots: doctor.available_slots || ['09:00-10:00', '10:00-11:00', '14:00-15:00', '15:00-16:00']
       })) || [];
 
       setDoctors(formattedDoctors);
@@ -95,17 +98,23 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
 
       if (error) throw error;
 
-      const formattedAppointments = appointmentsData?.map(apt => {
-        const doctor = doctors.find(d => d.id === apt.doctor_id);
+      const formattedAppointments = await Promise.all(appointmentsData?.map(async apt => {
+        // Get doctor details from database
+        const { data: doctorData } = await supabase
+          .from('doctor_details')
+          .select('specialization, profiles:user_id(full_name)')
+          .eq('user_id', apt.doctor_id)
+          .single();
+
         return {
           id: apt.id,
-          doctorName: doctor?.name || 'Dr. Unknown',
-          specialization: doctor?.specialization || 'General Medicine',
+          doctorName: doctorData?.profiles?.full_name || 'Dr. Unknown',
+          specialization: doctorData?.specialization || 'General Medicine',
           date: apt.appointment_date,
           time: apt.appointment_time,
           status: apt.status
         };
-      }) || [];
+      }) || []);
 
       setAppointments(formattedAppointments);
     } catch (error) {

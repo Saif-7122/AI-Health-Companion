@@ -107,8 +107,8 @@ const PatientProfile: React.FC<PatientProfileProps> = ({ user }) => {
 
       setIsEditing(false);
       toast({
-        title: "Profile Updated",
-        description: "Your profile information has been saved successfully.",
+        title: "Success!",
+        description: "Your profile has been updated successfully.",
       });
     } catch (error) {
       console.error('Error saving profile:', error);
