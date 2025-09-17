@@ -57,11 +57,20 @@ const Index = () => {
   const loadUserProfile = async (userId: string) => {
     try {
       console.log('Loading profile for user:', userId);
-      const { data: profile, error } = await supabase
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Profile load timeout')), 5000)
+      );
+      
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      const { data: profile, error } = result;
 
       console.log('Profile query result:', { profile, error });
 
