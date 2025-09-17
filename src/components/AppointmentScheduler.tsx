@@ -98,23 +98,30 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
 
       if (error) throw error;
 
-      const formattedAppointments = await Promise.all(appointmentsData?.map(async apt => {
-        // Get doctor details from database
-        const { data: doctorData } = await supabase
-          .from('doctor_details')
-          .select('specialization, profiles:user_id(full_name)')
-          .eq('user_id', apt.doctor_id)
-          .single();
+      // Get all doctor details in a single query
+      const doctorIds = [...new Set(appointmentsData?.map(apt => apt.doctor_id) || [])];
+      const { data: doctorsData } = await supabase
+        .from('doctor_details')
+        .select('user_id, specialization, profiles:user_id(full_name)')
+        .in('user_id', doctorIds);
 
+      // Create a lookup map for faster access
+      const doctorLookup = doctorsData?.reduce((acc, doctor) => {
+        acc[doctor.user_id] = doctor;
+        return acc;
+      }, {} as Record<string, any>) || {};
+
+      const formattedAppointments = appointmentsData?.map(apt => {
+        const doctor = doctorLookup[apt.doctor_id];
         return {
           id: apt.id,
-          doctorName: doctorData?.profiles?.full_name || 'Dr. Unknown',
-          specialization: doctorData?.specialization || 'General Medicine',
+          doctorName: doctor?.profiles?.full_name || 'Dr. Unknown',
+          specialization: doctor?.specialization || 'General Medicine',
           date: apt.appointment_date,
           time: apt.appointment_time,
           status: apt.status
         };
-      }) || []);
+      }) || [];
 
       setAppointments(formattedAppointments);
     } catch (error) {
