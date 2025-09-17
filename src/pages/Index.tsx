@@ -23,13 +23,14 @@ const Index = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
         if (session?.user) {
           await loadUserProfile(session.user.id);
         } else {
           setCurrentUser(null);
           setCurrentView('landing');
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -38,19 +39,24 @@ const Index = () => {
 
   const checkAuth = async () => {
     try {
+      console.log('Checking authentication...');
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        console.log('Session found for user:', session.user.id);
         await loadUserProfile(session.user.id);
+      } else {
+        console.log('No session found');
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error checking auth:', error);
-    } finally {
       setLoading(false);
     }
   };
 
   const loadUserProfile = async (userId: string) => {
     try {
+      console.log('Loading profile for user:', userId);
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -59,13 +65,26 @@ const Index = () => {
 
       if (error) {
         console.error('Error loading profile:', error);
+        // If profile doesn't exist, redirect to landing for user to select role
+        setCurrentView('landing');
+        setLoading(false);
         return;
       }
 
-      setCurrentUser({ ...profile, id: userId });
-      setCurrentView(profile.user_type === 'doctor' ? 'doctor-dashboard' : 'patient-dashboard');
+      if (profile) {
+        console.log('Profile loaded successfully:', profile);
+        setCurrentUser({ ...profile, id: userId });
+        setCurrentView(profile.user_type === 'doctor' ? 'doctor-dashboard' : 'patient-dashboard');
+        setLoading(false);
+      } else {
+        console.log('No profile found, redirecting to landing');
+        setCurrentView('landing');
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      setCurrentView('landing');
+      setLoading(false);
     }
   };
 
