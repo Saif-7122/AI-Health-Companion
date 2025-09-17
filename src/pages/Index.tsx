@@ -61,7 +61,9 @@ const Index = () => {
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
+
+      console.log('Profile query result:', { profile, error });
 
       if (error) {
         console.error('Error loading profile:', error);
@@ -75,12 +77,12 @@ const Index = () => {
         console.log('Profile loaded successfully:', profile);
         setCurrentUser({ ...profile, id: userId });
         setCurrentView(profile.user_type === 'doctor' ? 'doctor-dashboard' : 'patient-dashboard');
-        setLoading(false);
       } else {
         console.log('No profile found, redirecting to landing');
         setCurrentView('landing');
-        setLoading(false);
       }
+      
+      setLoading(false);
     } catch (error) {
       console.error('Error loading user profile:', error);
       setCurrentView('landing');
