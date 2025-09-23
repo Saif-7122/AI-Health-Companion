@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Send, User, Stethoscope } from 'lucide-react';
+import { Bot, Send, User, Stethoscope, Plus, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import aiChatIcon from '../assets/ai-chat-icon.jpg';
@@ -168,16 +168,75 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user }) => {
     }
   };
 
+  const handleNewChat = async () => {
+    try {
+      // Save current chat to medical records if there are user messages
+      const userMessages = messages.filter(msg => msg.type === 'user');
+      if (currentSessionId && userMessages.length > 0) {
+        const { error: recordError } = await supabase
+          .from('medical_records')
+          .insert({
+            patient_id: user.id,
+            chat_session_id: currentSessionId,
+            title: `AI Consultation - ${new Date().toLocaleDateString()}`,
+            description: `Chat session with ${userMessages.length} messages`,
+            record_type: 'chat_summary'
+          });
+
+        if (recordError) {
+          console.error('Error saving chat to medical records:', recordError);
+        }
+      }
+
+      // Reset chat state
+      setCurrentSessionId(null);
+      setMessages([
+        {
+          id: '1',
+          type: 'ai',
+          content: `Hello ${user.full_name || user.name}! I'm your AI Health Companion. I can help you with medicine recommendations, answer health questions, and provide general medical guidance. How can I assist you today?`,
+          timestamp: new Date()
+        }
+      ]);
+
+      toast({
+        title: "New Chat Started",
+        description: "Previous chat saved to medical history.",
+      });
+    } catch (error) {
+      console.error('Error starting new chat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start new chat. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="h-[600px] flex flex-col shadow-card-custom">
       <CardHeader className="bg-gradient-medical text-white rounded-t-lg">
-        <CardTitle className="flex items-center gap-3">
-          <img src={aiChatIcon} alt="AI Chat" className="h-8 w-8 rounded-full" />
-          AI Health Assistant
-        </CardTitle>
-        <CardDescription className="text-white/90">
-          Get medical guidance and medicine recommendations
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-3">
+              <img src={aiChatIcon} alt="AI Chat" className="h-8 w-8 rounded-full" />
+              AI Health Assistant
+            </CardTitle>
+            <CardDescription className="text-white/90">
+              Get medical guidance and medicine recommendations
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewChat}
+            className="text-white hover:bg-white/20"
+            title="Start New Chat"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Chat
+          </Button>
+        </div>
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col p-0">

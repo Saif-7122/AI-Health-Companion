@@ -106,7 +106,7 @@ const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ user, onLogout }) => 
           </TabsContent>
 
           <TabsContent value="appointments">
-            <DoctorAppointments />
+            <DoctorAppointments user={user} />
           </TabsContent>
         </Tabs>
       </div>

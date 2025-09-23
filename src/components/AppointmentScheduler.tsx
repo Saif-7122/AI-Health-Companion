@@ -148,7 +148,7 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
           doctor_id: selectedDoctor,
           appointment_date: format(selectedDate, 'yyyy-MM-dd'),
           appointment_time: selectedSlot,
-          status: 'scheduled',
+          status: 'pending',
           type: 'consultation'
         });
 
@@ -163,8 +163,8 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
       
       const doctor = doctors.find(d => d.id === selectedDoctor);
       toast({
-        title: "Appointment Booked!",
-        description: `Your appointment with ${doctor?.name} on ${selectedDate.toLocaleDateString()} at ${selectedSlot} has been confirmed.`,
+        title: "Appointment Request Sent!",
+        description: `Your appointment request with ${doctor?.name} has been sent. You'll be notified once the doctor confirms.`,
       });
 
     } catch (error) {

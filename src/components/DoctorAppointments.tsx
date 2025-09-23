@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Calendar, Clock, User, CheckCircle, XCircle, Calendar as CalendarIcon, Video, Phone } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Appointment {
   id: string;
@@ -12,59 +13,75 @@ interface Appointment {
   patientEmail: string;
   date: string;
   time: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
-  type: 'online' | 'phone';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
+  type: 'consultation';
   notes?: string;
 }
 
-const DoctorAppointments: React.FC = () => {
+interface DoctorAppointmentsProps {
+  user?: any;
+}
+
+const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Mock appointments data
-  const [appointments, setAppointments] = useState<Appointment[]>([
-    {
-      id: '1',
-      patientName: 'John Smith',
-      patientEmail: 'john.smith@email.com',
-      date: '2024-01-20',
-      time: '09:00 AM',
-      status: 'scheduled',
-      type: 'online'
-    },
-    {
-      id: '2',
-      patientName: 'Sarah Johnson',
-      patientEmail: 'sarah.j@email.com',
-      date: '2024-01-20',
-      time: '11:00 AM',
-      status: 'scheduled',
-      type: 'phone'
-    },
-    {
-      id: '3',
-      patientName: 'Michael Brown',
-      patientEmail: 'michael.brown@email.com',
-      date: '2024-01-19',
-      time: '02:00 PM',
-      status: 'completed',
-      type: 'online',
-      notes: 'Follow-up required in 2 weeks'
-    },
-    {
-      id: '4',
-      patientName: 'Emily Davis',
-      patientEmail: 'emily.davis@email.com',
-      date: '2024-01-21',
-      time: '10:00 AM',
-      status: 'scheduled',
-      type: 'online'
+  useEffect(() => {
+    if (user?.id) {
+      loadAppointments();
     }
-  ]);
+  }, [user?.id]);
+
+  const loadAppointments = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const { data: appointmentsData, error } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          profiles!appointments_patient_id_fkey (
+            full_name,
+            email
+          )
+        `)
+        .eq('doctor_id', user.id)
+        .order('appointment_date', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedAppointments = appointmentsData?.map(apt => ({
+        id: apt.id,
+        patientName: apt.profiles?.full_name || 'Unknown Patient',
+        patientEmail: apt.profiles?.email || '',
+        date: apt.appointment_date,
+        time: apt.appointment_time,
+        status: apt.status as 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no-show',
+        type: 'consultation' as const,
+        notes: apt.notes
+      })) || [];
+
+      setAppointments(formattedAppointments);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load appointments.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'scheduled':
+      case 'pending':
+        return 'bg-yellow-500 text-white';
+      case 'confirmed':
         return 'bg-medical-blue text-white';
       case 'completed':
         return 'bg-medical-green text-white';
@@ -77,17 +94,33 @@ const DoctorAppointments: React.FC = () => {
     }
   };
 
-  const handleStatusChange = (appointmentId: string, newStatus: Appointment['status']) => {
-    setAppointments(prev =>
-      prev.map(apt =>
-        apt.id === appointmentId ? { ...apt, status: newStatus } : apt
-      )
-    );
-    
-    toast({
-      title: "Appointment Updated",
-      description: `Appointment status changed to ${newStatus}`,
-    });
+  const handleStatusChange = async (appointmentId: string, newStatus: Appointment['status']) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: newStatus })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      setAppointments(prev =>
+        prev.map(apt =>
+          apt.id === appointmentId ? { ...apt, status: newStatus } : apt
+        )
+      );
+      
+      toast({
+        title: "Appointment Updated",
+        description: `Appointment status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update appointment status.",
+        variant: "destructive"
+      });
+    }
   };
 
   const filterAppointmentsByDate = (filterDate: string) => {
@@ -95,8 +128,9 @@ const DoctorAppointments: React.FC = () => {
   };
 
   const todayAppointments = filterAppointmentsByDate(new Date().toISOString().split('T')[0]);
+  const pendingAppointments = appointments.filter(apt => apt.status === 'pending');
   const upcomingAppointments = appointments.filter(apt => 
-    new Date(apt.date) > new Date() && apt.status === 'scheduled'
+    new Date(apt.date) > new Date() && (apt.status === 'confirmed' || apt.status === 'pending')
   );
 
   return (
@@ -114,6 +148,76 @@ const DoctorAppointments: React.FC = () => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Pending Confirmations */}
+        {pendingAppointments.length > 0 && (
+          <Card className="lg:col-span-3 shadow-card-custom border-yellow-200">
+            <CardHeader className="bg-yellow-50">
+              <CardTitle className="text-lg text-yellow-800">Pending Confirmations</CardTitle>
+              <CardDescription className="text-yellow-700">
+                New appointment requests requiring your confirmation
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                {pendingAppointments.map((appointment) => (
+                  <div key={appointment.id} className="p-4 rounded-lg border bg-yellow-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarImage src="" />
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            {appointment.patientName.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium">{appointment.patientName}</h4>
+                          <p className="text-sm text-muted-foreground">{appointment.patientEmail}</p>
+                        </div>
+                      </div>
+                      <Badge className={getStatusColor(appointment.status)}>
+                        {appointment.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(appointment.date).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {appointment.time}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleStatusChange(appointment.id, 'confirmed')}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Confirm
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleStatusChange(appointment.id, 'cancelled')}
+                        >
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Today's Appointments */}
         <Card className="lg:col-span-2 shadow-card-custom">
           <CardHeader>
@@ -151,16 +255,12 @@ const DoctorAppointments: React.FC = () => {
                         {appointment.time}
                       </div>
                       <div className="flex items-center gap-1">
-                        {appointment.type === 'online' ? (
-                          <Video className="h-3 w-3" />
-                        ) : (
-                          <Phone className="h-3 w-3" />
-                        )}
+                        <Video className="h-3 w-3" />
                         {appointment.type}
                       </div>
                     </div>
 
-                    {appointment.status === 'scheduled' && (
+                    {appointment.status === 'confirmed' && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -245,12 +345,18 @@ const DoctorAppointments: React.FC = () => {
             <CardTitle className="text-lg">Appointment Statistics</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {appointments.filter(apt => apt.status === 'pending').length}
+                </div>
+                <div className="text-sm text-muted-foreground">Pending</div>
+              </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary">
-                  {appointments.filter(apt => apt.status === 'scheduled').length}
+                  {appointments.filter(apt => apt.status === 'confirmed').length}
                 </div>
-                <div className="text-sm text-muted-foreground">Scheduled</div>
+                <div className="text-sm text-muted-foreground">Confirmed</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-medical-green">
