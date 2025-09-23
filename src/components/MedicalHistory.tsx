@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,42 +20,44 @@ interface MedicalHistoryProps {
 
 const MedicalHistory: React.FC<MedicalHistoryProps> = ({ user }) => {
   const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock medical history data
-  const medicalRecords: MedicalRecord[] = [
-    {
-      id: '1',
-      date: new Date('2024-01-15'),
-      type: 'consultation',
-      title: 'AI Consultation - Headache Treatment',
-      description: 'Discussed recurring headaches. AI recommended hydration, rest, and suggested monitoring patterns. Provided information about when to seek medical attention.',
-      status: 'resolved'
-    },
-    {
-      id: '2',
-      date: new Date('2024-01-10'),
-      type: 'prescription',
-      title: 'Medicine Recommendation - Cold Symptoms',
-      description: 'AI provided over-the-counter medication suggestions for cold symptoms including acetaminophen for fever and throat lozenges.',
-      status: 'resolved'
-    },
-    {
-      id: '3',
-      date: new Date('2024-01-05'),
-      type: 'symptom',
-      title: 'Symptom Tracking - Sleep Issues',
-      description: 'Reported difficulty sleeping. AI provided sleep hygiene recommendations and stress management techniques.',
-      status: 'ongoing'
-    },
-    {
-      id: '4',
-      date: new Date('2024-01-01'),
-      type: 'consultation',
-      title: 'Health Check Discussion',
-      description: 'General health discussion with AI. Reviewed lifestyle factors and preventive care recommendations.',
-      status: 'follow-up'
+  useEffect(() => {
+    if (user?.id) {
+      loadMedicalHistory();
     }
-  ];
+  }, [user?.id]);
+
+  const loadMedicalHistory = async () => {
+    try {
+      const { data: records, error } = await supabase
+        .from('medical_records')
+        .select('*')
+        .eq('patient_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading medical history:', error);
+        return;
+      }
+
+      const formattedRecords: MedicalRecord[] = records?.map(record => ({
+        id: record.id,
+        date: new Date(record.created_at),
+        type: record.record_type === 'chat_summary' ? 'consultation' : record.record_type as any,
+        title: record.title,
+        description: record.description || 'No additional details available.',
+        status: 'resolved' as any
+      })) || [];
+
+      setMedicalRecords(formattedRecords);
+    } catch (error) {
+      console.error('Error loading medical history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -158,16 +161,25 @@ const MedicalHistory: React.FC<MedicalHistoryProps> = ({ user }) => {
           </Card>
         ))}
         
-        {medicalRecords.length === 0 && (
-        <Card className="shadow-card-custom">
-          <CardContent className="text-center py-12">
-            <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">No Medical History Yet</h3>
-            <p className="text-muted-foreground">
-              Start chatting with your AI health companion to build your medical history.
-            </p>
-          </CardContent>
-        </Card>
+        {loading && (
+          <Card className="shadow-card-custom">
+            <CardContent className="text-center py-12">
+              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading medical history...</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {!loading && medicalRecords.length === 0 && (
+          <Card className="shadow-card-custom">
+            <CardContent className="text-center py-12">
+              <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No Medical History Yet</h3>
+              <p className="text-muted-foreground">
+                Start chatting with your AI health companion to build your medical history.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

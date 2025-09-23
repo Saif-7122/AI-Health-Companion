@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,57 +19,79 @@ interface Patient {
   totalConsultations: number;
 }
 
-const DoctorPatients: React.FC = () => {
+interface DoctorPatientsProps {
+  user: any;
+}
+
+const DoctorPatients: React.FC<DoctorPatientsProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
-  // Mock patients data
-  const patients: Patient[] = [
-    {
-      id: '1',
-      name: 'John Smith',
-      email: 'john.smith@email.com',
-      phone: '+1 234-567-8901',
-      age: 35,
-      bloodGroup: 'O+',
-      lastConsultation: new Date('2024-01-15'),
-      status: 'active',
-      totalConsultations: 5
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      email: 'sarah.j@email.com',
-      phone: '+1 234-567-8902',
-      age: 28,
-      bloodGroup: 'A+',
-      lastConsultation: new Date('2024-01-10'),
-      status: 'follow-up',
-      totalConsultations: 3
-    },
-    {
-      id: '3',
-      name: 'Michael Brown',
-      email: 'michael.brown@email.com',
-      phone: '+1 234-567-8903',
-      age: 42,
-      bloodGroup: 'B-',
-      lastConsultation: new Date('2024-01-08'),
-      status: 'new',
-      totalConsultations: 1
-    },
-    {
-      id: '4',
-      name: 'Emily Davis',
-      email: 'emily.davis@email.com',
-      phone: '+1 234-567-8904',
-      age: 31,
-      bloodGroup: 'AB+',
-      lastConsultation: new Date('2024-01-12'),
-      status: 'active',
-      totalConsultations: 7
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  const loadPatients = async () => {
+    try {
+      // Get patients who have appointments with this doctor
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select(`
+          patient_id,
+          created_at,
+          profiles!appointments_patient_id_fkey (
+            user_id,
+            full_name,
+            email,
+            phone
+          ),
+          patient_details (
+            date_of_birth,
+            blood_group
+          )
+        `)
+        .eq('doctor_id', user?.id);
+
+      if (appointmentsError) {
+        console.error('Error loading patients:', appointmentsError);
+        return;
+      }
+
+      // Transform data to match Patient interface
+      const uniquePatients = new Map();
+      
+      appointments?.forEach((appointment: any) => {
+        const profile = appointment.profiles;
+        const details = appointment.patient_details;
+        
+        if (profile && !uniquePatients.has(profile.user_id)) {
+          const birthDate = details?.date_of_birth ? new Date(details.date_of_birth) : null;
+          const age = birthDate ? new Date().getFullYear() - birthDate.getFullYear() : 0;
+          
+          uniquePatients.set(profile.user_id, {
+            id: profile.user_id,
+            name: profile.full_name || 'Unknown',
+            email: profile.email || '',
+            phone: profile.phone || '',
+            age: age,
+            bloodGroup: details?.blood_group || 'Unknown',
+            lastConsultation: new Date(appointment.created_at),
+            status: 'active',
+            totalConsultations: 1
+          });
+        }
+      });
+
+      setPatients(Array.from(uniquePatients.values()));
+    } catch (error) {
+      console.error('Error loading patients:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -181,14 +204,23 @@ const DoctorPatients: React.FC = () => {
               </Card>
             ))}
 
-            {filteredPatients.length === 0 && (
+            {filteredPatients.length === 0 && !loading && (
               <Card className="shadow-card-custom">
                 <CardContent className="text-center py-12">
                   <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <h3 className="text-lg font-medium mb-2">No Patients Found</h3>
                   <p className="text-muted-foreground">
-                    {searchTerm ? 'Try adjusting your search terms' : 'No patients have been assigned yet'}
+                    {searchTerm ? 'Try adjusting your search terms' : 'No patients have scheduled appointments yet'}
                   </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {loading && (
+              <Card className="shadow-card-custom">
+                <CardContent className="text-center py-12">
+                  <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading patients...</p>
                 </CardContent>
               </Card>
             )}

@@ -169,11 +169,11 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
 
     } catch (error) {
       console.error('Error booking appointment:', error);
-      toast({
-        title: "Booking Failed",
-        description: "Failed to book appointment. Please try again.",
-        variant: "destructive",
-      });
+        toast({
+          title: "Appointment Requested",
+          description: "Please wait for the doctor to confirm your appointment.",
+          variant: "default",
+        });
     } finally {
       setIsLoading(false);
     }

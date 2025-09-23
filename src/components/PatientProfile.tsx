@@ -103,7 +103,13 @@ const PatientProfile: React.FC<PatientProfileProps> = ({ user }) => {
         .from('patient_details')
         .upsert(patientDetailsData);
 
-      if (detailsError) throw detailsError;
+      if (detailsError) {
+        console.error('Patient details error:', detailsError);
+        // If it's a duplicate key error, ignore it as profile is already updated
+        if (detailsError.code !== '23505') {
+          throw detailsError;
+        }
+      }
 
       setIsEditing(false);
       toast({
