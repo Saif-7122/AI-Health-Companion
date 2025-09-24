@@ -45,42 +45,51 @@ const AppointmentScheduler: React.FC<AppointmentSchedulerProps> = ({ user }) => 
 
   const loadDoctors = async () => {
     try {
-      const { data: doctorDetails, error } = await supabase
+      // First get doctor details
+      const { data: doctorDetails, error: doctorError } = await supabase
         .from('doctor_details')
-        .select(`
-          *,
-          profiles:user_id (full_name, avatar_url)
-        `)
+        .select('*')
         .eq('is_available', true);
 
-      if (error) throw error;
+      if (doctorError) throw doctorError;
 
-      const formattedDoctors = doctorDetails?.map(doctor => ({
-        id: doctor.user_id,
-        name: doctor.profiles?.full_name || 'Dr. Unknown',
-        specialization: doctor.specialization,
-        image: doctor.profiles?.avatar_url || '',
-        availableSlots: doctor.available_slots || ['09:00-10:00', '10:00-11:00', '14:00-15:00', '15:00-16:00']
-      })) || [];
+      if (!doctorDetails || doctorDetails.length === 0) {
+        console.log('No available doctors found');
+        setDoctors([]);
+        return;
+      }
 
+      // Get corresponding profiles for the doctors
+      const userIds = doctorDetails.map(doctor => doctor.user_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url')
+        .in('user_id', userIds);
+
+      if (profileError) throw profileError;
+
+      // Create lookup map for profiles
+      const profileLookup = profiles?.reduce((acc, profile) => {
+        acc[profile.user_id] = profile;
+        return acc;
+      }, {} as Record<string, any>) || {};
+
+      const formattedDoctors = doctorDetails.map(doctor => {
+        const profile = profileLookup[doctor.user_id];
+        return {
+          id: doctor.user_id,
+          name: profile?.full_name || 'Dr. Unknown',
+          specialization: doctor.specialization,
+          image: profile?.avatar_url || '',
+          availableSlots: doctor.available_slots || ['09:00-10:00', '10:00-11:00', '14:00-15:00', '15:00-16:00']
+        };
+      });
+
+      console.log('Loaded doctors:', formattedDoctors);
       setDoctors(formattedDoctors);
     } catch (error) {
       console.error('Error loading doctors:', error);
-      // Fallback to mock data if no doctors in database
-      setDoctors([
-        {
-          id: 'mock-1',
-          name: 'Dr. Sarah Johnson',
-          specialization: 'General Medicine',
-          availableSlots: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM']
-        },
-        {
-          id: 'mock-2',
-          name: 'Dr. Michael Chen',
-          specialization: 'Cardiology',
-          availableSlots: ['10:00 AM', '01:00 PM', '03:00 PM', '05:00 PM']
-        }
-      ]);
+      setDoctors([]);
     }
   };
 
