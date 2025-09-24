@@ -58,26 +58,16 @@ const Index = () => {
     try {
       console.log('Loading profile for user:', userId);
       
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Profile load timeout')), 5000)
-      );
-      
-      const queryPromise = supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
-      const result = await Promise.race([queryPromise, timeoutPromise]);
-      const { data: profile, error } = result;
-
       console.log('Profile query result:', { profile, error });
 
       if (error) {
         console.error('Error loading profile:', error);
-        // If profile doesn't exist, redirect to landing for user to select role
-        setCurrentView('landing');
         setLoading(false);
         return;
       }
@@ -94,7 +84,6 @@ const Index = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error loading user profile:', error);
-      setCurrentView('landing');
       setLoading(false);
     }
   };
