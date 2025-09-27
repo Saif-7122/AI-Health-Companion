@@ -43,7 +43,7 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
         .from('appointments')
         .select(`
           *,
-          profiles!appointments_patient_id_fkey (
+          patient:profiles!patient_id(
             full_name,
             email
           )
@@ -55,8 +55,8 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
 
       const formattedAppointments = appointmentsData?.map(apt => ({
         id: apt.id,
-        patientName: apt.profiles?.full_name || 'Unknown Patient',
-        patientEmail: apt.profiles?.email || '',
+        patientName: apt.patient?.full_name || 'Unknown Patient',
+        patientEmail: apt.patient?.email || '',
         date: apt.appointment_date,
         time: apt.appointment_time,
         status: apt.status as 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no-show',
