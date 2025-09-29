@@ -42,13 +42,13 @@ const DoctorPatients: React.FC<DoctorPatientsProps> = ({ user }) => {
         .select(`
           patient_id,
           created_at,
-          profiles!appointments_patient_id_fkey (
+          patient_profile:profiles!patient_id (
             user_id,
             full_name,
             email,
             phone
           ),
-          patient_details (
+          patient_details!patient_id (
             date_of_birth,
             blood_group
           )
@@ -64,7 +64,7 @@ const DoctorPatients: React.FC<DoctorPatientsProps> = ({ user }) => {
       const uniquePatients = new Map();
       
       appointments?.forEach((appointment: any) => {
-        const profile = appointment.profiles;
+        const profile = appointment.patient_profile;
         const details = appointment.patient_details;
         
         if (profile && !uniquePatients.has(profile.user_id)) {

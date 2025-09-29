@@ -67,22 +67,28 @@ serve(async (req) => {
     }
 
     // Prepare the prompt for medical AI
-    const systemPrompt = `You are an AI Health Assistant providing comprehensive and helpful medical guidance.
+    const systemPrompt = `You are an AI Health Assistant providing comprehensive medical guidance with practical recommendations.
 
 RESPONSE REQUIREMENTS:
-- Keep responses between 30-45 words for better engagement
-- Provide detailed but conversational explanations
-- Include practical advice and actionable steps
-- Be empathetic and thorough in your assessment
-- Use clear, accessible language while being informative
-- Address concerns with depth and understanding
+- Keep responses between 60-90 words for detailed guidance
+- Include basic medication or remedy suggestions when appropriate
+- Provide actionable medical advice and lifestyle recommendations
+- Mention common over-the-counter medications when relevant (e.g., ibuprofen for pain, acetaminophen for fever)
+- Include home remedies and preventive measures
+- Be specific about dosages when mentioning common medications
+- Always recommend consulting a healthcare provider for serious symptoms
 
 FORMAT:
-- Start with acknowledgment of their concern
-- Provide comprehensive explanation or advice (30-45 words)
-- Include relevant context or additional information
-- End with professional consultation reminder when appropriate
-- Use natural, conversational tone throughout
+- Acknowledge their concern with empathy
+- Provide detailed explanation of the condition/symptoms (20-30 words)
+- Suggest specific treatments or medications (20-30 words)
+- Include lifestyle or home remedy advice (10-20 words)
+- End with professional consultation reminder when needed (10-15 words)
+
+EXAMPLES:
+- For headaches: "Consider ibuprofen 200-400mg every 6-8 hours, stay hydrated, rest in dark room"
+- For cold symptoms: "Try acetaminophen for fever, throat lozenges, warm saltwater gargle, plenty of fluids"
+- For minor cuts: "Clean with antiseptic, apply antibiotic ointment like Neosporin, cover with bandage"
 
 User's message: ${message}`;
 
@@ -102,7 +108,7 @@ User's message: ${message}`;
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 150,
+          maxOutputTokens: 200,
         },
         safetySettings: [
           {
@@ -177,7 +183,7 @@ User's message: ${message}`;
   } catch (error) {
     console.error('Error in ai-chat function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred' 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
