@@ -131,6 +131,9 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
   const upcomingAppointments = appointments.filter(apt => 
     new Date(apt.date) > new Date() && apt.status === 'confirmed'
   );
+  const pastAppointments = appointments.filter(apt => 
+    new Date(apt.date) < new Date()
+  );
 
   return (
     <div className="space-y-6">
@@ -138,26 +141,76 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
         <CardHeader className="bg-primary-light">
           <CardTitle className="flex items-center gap-3">
             <CalendarIcon className="h-6 w-6 text-primary" />
-            Appointment Management
+            All Scheduled Appointments
           </CardTitle>
           <CardDescription>
-            Manage your scheduled consultations and patient appointments
+            Complete view of all your patient appointments
           </CardDescription>
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Today's Appointments */}
-        <Card className="lg:col-span-2 shadow-card-custom">
-          <CardHeader>
-            <CardTitle className="text-lg">Today's Appointments</CardTitle>
-            <CardDescription>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {todayAppointments.map((appointment) => (
+      {/* Quick Stats */}
+      <Card className="shadow-card-custom">
+        <CardHeader>
+          <CardTitle className="text-lg">Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {appointments.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Total</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-medical-warning">
+                {todayAppointments.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Today</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {upcomingAppointments.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Upcoming</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-medical-green">
+                {appointments.filter(apt => apt.status === 'completed').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Completed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-medical-error">
+                {appointments.filter(apt => apt.status === 'cancelled').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Cancelled</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* All Appointments List */}
+      <Card className="shadow-card-custom">
+        <CardHeader>
+          <CardTitle className="text-lg">All Appointments</CardTitle>
+          <CardDescription>
+            Complete history of scheduled consultations
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Loading appointments...</p>
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No appointments scheduled yet</p>
+              </div>
+            ) : (
+              appointments.map((appointment) => (
                 <div key={appointment.id} className="p-4 rounded-lg border bg-muted/50">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-3">
@@ -179,6 +232,10 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(appointment.date).toLocaleDateString()}
+                      </div>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {appointment.time}
@@ -217,92 +274,11 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
                     </div>
                   )}
                 </div>
-              ))}
-
-              {todayAppointments.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No appointments scheduled for today</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Appointments */}
-        <Card className="shadow-card-custom">
-          <CardHeader>
-            <CardTitle className="text-lg">Upcoming</CardTitle>
-            <CardDescription>Next scheduled appointments</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {upcomingAppointments.slice(0, 5).map((appointment) => (
-                <div key={appointment.id} className="p-3 rounded-lg border">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-sm">{appointment.patientName}</h4>
-                    <Badge variant="outline" className="text-xs">
-                      {appointment.type}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(appointment.date).toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {appointment.time}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {upcomingAppointments.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No upcoming appointments</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="lg:col-span-3 shadow-card-custom">
-          <CardHeader>
-            <CardTitle className="text-lg">Appointment Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">
-                  {appointments.filter(apt => apt.status === 'confirmed').length}
-                </div>
-                <div className="text-sm text-muted-foreground">Confirmed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-medical-green">
-                  {appointments.filter(apt => apt.status === 'completed').length}
-                </div>
-                <div className="text-sm text-muted-foreground">Completed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-medical-warning">
-                  {todayAppointments.length}
-                </div>
-                <div className="text-sm text-muted-foreground">Today</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-secondary">
-                  {upcomingAppointments.length}
-                </div>
-                <div className="text-sm text-muted-foreground">Upcoming</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
