@@ -128,9 +128,8 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
   };
 
   const todayAppointments = filterAppointmentsByDate(new Date().toISOString().split('T')[0]);
-  const pendingAppointments = appointments.filter(apt => apt.status === 'pending');
   const upcomingAppointments = appointments.filter(apt => 
-    new Date(apt.date) > new Date() && (apt.status === 'confirmed' || apt.status === 'pending')
+    new Date(apt.date) > new Date() && apt.status === 'confirmed'
   );
 
   return (
@@ -148,76 +147,6 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pending Confirmations */}
-        {pendingAppointments.length > 0 && (
-          <Card className="lg:col-span-3 shadow-card-custom border-yellow-200">
-            <CardHeader className="bg-yellow-50">
-              <CardTitle className="text-lg text-yellow-800">Pending Confirmations</CardTitle>
-              <CardDescription className="text-yellow-700">
-                New appointment requests requiring your confirmation
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="space-y-4">
-                {pendingAppointments.map((appointment) => (
-                  <div key={appointment.id} className="p-4 rounded-lg border bg-yellow-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarImage src="" />
-                          <AvatarFallback className="bg-primary text-primary-foreground">
-                            {appointment.patientName.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-medium">{appointment.patientName}</h4>
-                          <p className="text-sm text-muted-foreground">{appointment.patientEmail}</p>
-                        </div>
-                      </div>
-                      <Badge className={getStatusColor(appointment.status)}>
-                        {appointment.status}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(appointment.date).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {appointment.time}
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleStatusChange(appointment.id, 'confirmed')}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Confirm
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(appointment.id, 'cancelled')}
-                        >
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Decline
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Today's Appointments */}
         <Card className="lg:col-span-2 shadow-card-custom">
           <CardHeader>
@@ -345,13 +274,7 @@ const DoctorAppointments: React.FC<DoctorAppointmentsProps> = ({ user }) => {
             <CardTitle className="text-lg">Appointment Statistics</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {appointments.filter(apt => apt.status === 'pending').length}
-                </div>
-                <div className="text-sm text-muted-foreground">Pending</div>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary">
                   {appointments.filter(apt => apt.status === 'confirmed').length}
