@@ -20,9 +20,9 @@ serve(async (req) => {
       throw new Error('Message and userId are required');
     }
 
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not found in environment variables');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not found in environment variables');
     }
 
     // Initialize Supabase client
@@ -92,56 +92,35 @@ EXAMPLES:
 
 User's message: ${message}`;
 
-    // Call Gemini API
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // Call Lovable AI Gateway
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: systemPrompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 200,
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          }
-        ]
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 200,
       }),
     });
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Gemini API error:', errorText);
-      throw new Error(`Gemini API error: ${geminiResponse.status}`);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('Lovable AI error:', errorText);
+      throw new Error(`Lovable AI error: ${aiResponse.status}`);
     }
 
-    const geminiData = await geminiResponse.json();
-    console.log('Gemini response received');
+    const aiData = await aiResponse.json();
+    console.log('AI response received');
 
-    const aiResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 
-                      'I apologize, but I encountered an issue generating a response. Please try again or consult with a healthcare professional for medical advice.';
+    const aiResponseText = aiData.choices?.[0]?.message?.content || 
+                          'I apologize, but I encountered an issue generating a response. Please try again or consult with a healthcare professional for medical advice.';
 
     // Save AI response
     const { error: aiMessageError } = await supabase
@@ -149,7 +128,7 @@ User's message: ${message}`;
       .insert({
         session_id: currentSessionId,
         role: 'assistant',
-        content: aiResponse
+        content: aiResponseText
       });
 
     if (aiMessageError) {
@@ -174,7 +153,7 @@ User's message: ${message}`;
     }
 
     return new Response(JSON.stringify({ 
-      response: aiResponse,
+      response: aiResponseText,
       sessionId: currentSessionId
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
