@@ -4,11 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Bot, Send, User, Stethoscope, Plus, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import aiChatIcon from '../assets/ai-chat-icon.jpg';
+
 interface Message {
   id: string;
   type: 'user' | 'ai';
@@ -287,17 +287,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ user }) => {
                   <Bot className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
-              <div className="bg-muted rounded-lg p-3 max-w-[80%] space-y-3">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="bg-muted rounded-lg p-3">
+                <div className="flex space-x-1">
                   <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                   <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <span className="text-xs text-muted-foreground ml-2">AI is thinking...</span>
                 </div>
-                <Skeleton className="h-4 w-[280px]" />
-                <Skeleton className="h-4 w-[240px]" />
-                <Skeleton className="h-4 w-[260px]" />
-                <Skeleton className="h-4 w-[200px]" />
               </div>
             </div>
           )}
